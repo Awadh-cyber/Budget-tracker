@@ -35,3 +35,31 @@ Three real things I spent money on this week:
 | 3 | Phone bill | 8.000 | Bills | 2026-11-01 | K-Net | true | Monthly plan |
 
 `id` and `created_at` filled themselves in. I didn't type them.
+
+## My two questions
+
+### 1. How much did I spend today (2 Nov 2026)?
+
+```sql
+select sum(amount), count(*) from expenses where spent_on = '2026-11-02';
+```
+
+In simple words: pick only the rows where the day is 2 Nov, then add up their amounts and count them.
+
+**Answer:** 5.500 KD across 2 expenses: lunch at a café (3.500) and an Uber (2.000).
+
+### 2. What was my biggest spend?
+
+```sql
+select item, amount, category, spent_on from expenses order by amount desc limit 1;
+```
+
+In simple words: sort every row from the most expensive to the cheapest, then keep only the top one.
+
+**Answer:** the phone bill, 8.000 KD (Bills) on 1 Nov 2026.
+
+## The SQL in simple words
+
+- **CREATE TABLE** made the `expenses` table and its columns.
+- **INSERT** added my 3 rows.
+- **SELECT** read the rows back to answer my questions. It doesn't change anything.
