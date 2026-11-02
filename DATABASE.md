@@ -23,3 +23,15 @@ One row = one thing I spent money on.
 **The details I'll filter by:** `category`, `spent_on` and `amount`.
 
 **Security:** Row Level Security is switched on. For now that means only I can see the data, through the Supabase dashboard and Claude. Nobody can read it from a website yet.
+
+## My rows
+
+Three real things I spent money on this week:
+
+| id | item | amount (KD) | category | spent_on | payment_method | is_need | note |
+|---|---|---|---|---|---|---|---|
+| 1 | Lunch at a café | 3.500 | Food | 2026-11-02 | Card | false | Lunch with friends after class |
+| 2 | Uber to CODED | 2.000 | Transport | 2026-11-02 | Card | true | — |
+| 3 | Phone bill | 8.000 | Bills | 2026-11-01 | K-Net | true | Monthly plan |
+
+`id` and `created_at` filled themselves in. I didn't type them.
