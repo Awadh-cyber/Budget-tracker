@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Budget Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Budget Tracker</h1>
+      <p class="subtitle">Where my money goes</p>
+    </header>
+
+    <section class="summary" aria-label="Summary">
+      <div class="card">
+        <span class="label">Spent today</span>
+        <span class="value" id="today-total">–</span>
+      </div>
+      <div class="card">
+        <span class="label">Spent this month</span>
+        <span class="value" id="month-total">–</span>
+      </div>
+      <div class="card">
+        <span class="label">Biggest spend</span>
+        <span class="value" id="biggest">–</span>
+        <span class="hint" id="biggest-item"></span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Add an expense</h2>
+      <form id="expense-form">
+        <label>
+          What did you buy?
+          <input name="item" required placeholder="Lunch at a café">
+        </label>
+        <label>
+          Amount (KD)
+          <input name="amount" type="number" step="0.001" min="0.001" required placeholder="3.500">
+        </label>
+        <label>
+          Category
+          <select name="category" required>
+            <option>Food</option>
+            <option>Transport</option>
+            <option>Bills</option>
+            <option>Shopping</option>
+            <option>Fun</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>
+          Date
+          <input name="spent_on" type="date" required>
+        </label>
+        <label>
+          Paid with
+          <select name="payment_method">
+            <option value="">—</option>
+            <option>Card</option>
+            <option>Cash</option>
+            <option>K-Net</option>
+          </select>
+        </label>
+        <label>
+          Need or want?
+          <select name="is_need">
+            <option value="">—</option>
+            <option value="true">Need</option>
+            <option value="false">Want</option>
+          </select>
+        </label>
+        <label class="wide">
+          Note
+          <input name="note" placeholder="Optional">
+        </label>
+        <button type="submit">Add expense</button>
+      </form>
+      <p class="message" id="form-message" role="status"></p>
+    </section>
+
+    <section class="panel">
+      <div class="list-head">
+        <h2>Expenses</h2>
+        <select id="category-filter" aria-label="Filter by category">
+          <option value="">All categories</option>
+        </select>
+      </div>
+      <p class="message" id="list-message" role="status">Loading…</p>
+      <ul id="expense-list"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
