@@ -33,6 +33,7 @@ async function loadExpenses() {
   }
 
   expenses = data;
+  await loadReceiptUrls();
   if (expenses.length === 0) {
     showMessage(listMessage, "No expenses yet. If you know there are rows in Supabase, the table may not allow the website to read it yet.", true);
   } else {
@@ -41,6 +42,18 @@ async function loadExpenses() {
   renderFilter();
   renderList();
   renderSummary();
+}
+
+// The receipts bucket is private, so each photo gets a link that works for one hour.
+async function loadReceiptUrls() {
+  const paths = expenses.map((e) => e.receipt_path).filter(Boolean);
+  if (paths.length === 0) return;
+
+  const { data, error } = await supabase.storage.from("receipts").createSignedUrls(paths, 3600);
+  if (error) return;
+
+  const urls = new Map(data.filter((d) => d.signedUrl).map((d) => [d.path, d.signedUrl]));
+  for (const e of expenses) e.receipt_url = urls.get(e.receipt_path);
 }
 
 function renderSummary() {
@@ -78,11 +91,32 @@ function renderList() {
     meta.textContent = [e.category, e.spent_on, e.payment_method, e.note].filter(Boolean).join(" · ");
     left.append(name, meta);
 
+    const main = document.createElement("div");
+    main.className = "item-main";
+    if (e.receipt_url) {
+      const link = document.createElement("a");
+      link.className = "receipt";
+      link.href = e.receipt_url;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.title = "Open receipt";
+      if (e.receipt_path.endsWith(".pdf")) {
+        link.textContent = "PDF";
+      } else {
+        const img = document.createElement("img");
+        img.src = e.receipt_url;
+        img.alt = `Receipt for ${e.item}`;
+        link.append(img);
+      }
+      main.append(link);
+    }
+    main.append(left);
+
     const amount = document.createElement("div");
     amount.className = "item-amount";
     amount.textContent = kd(e.amount);
 
-    li.append(left, amount);
+    li.append(main, amount);
     return li;
   }));
 }
@@ -107,7 +141,21 @@ form.addEventListener("submit", async (event) => {
     payment_method: values.payment_method || null,
     is_need: values.is_need === "" ? null : values.is_need === "true",
     note: values.note.trim() || null,
+    receipt_path: null,
   };
+
+  const file = values.receipt;
+  if (file && file.size > 0) {
+    const ext = file.name.split(".").pop().toLowerCase();
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("receipts").upload(path, file, { contentType: file.type });
+    if (uploadError) {
+      button.disabled = false;
+      showMessage(formMessage, `Couldn't upload the receipt: ${uploadError.message}`, true);
+      return;
+    }
+    row.receipt_path = path;
+  }
 
   const { error } = await supabase.from("expenses").insert(row);
   button.disabled = false;
