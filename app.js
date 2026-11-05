@@ -39,6 +39,8 @@ const formMessage = document.getElementById("form-message");
 const list = document.getElementById("expense-list");
 const listMessage = document.getElementById("list-message");
 const filter = document.getElementById("category-filter");
+const suggestButton = document.getElementById("suggest-button");
+const suggestMessage = document.getElementById("suggest-message");
 
 let expenses = [];
 let currentUser = null;
@@ -216,6 +218,8 @@ function showSignedIn(user) {
   const changedUser = currentUser?.id !== user.id;
   currentUser = user;
   setPasswordVisible(false);
+  showMessage(authMessage, "");
+  resend.hidden = true;
   accountEmail.textContent = user.user_metadata?.full_name || user.email;
   accountEmail.title = user.email;
   appLoading.hidden = true;
@@ -398,9 +402,38 @@ form.addEventListener("submit", async (event) => {
   }
 
   showMessage(formMessage, `Added ${row.item} (${kd(row.amount)}).`);
+  showMessage(suggestMessage, "");
   form.reset();
   form.spent_on.value = todayISO();
   loadExpenses();
+});
+
+// Asks our "suggest-category" Edge Function. The SDK sends the logged-in user's JWT;
+// the function calls OpenRouter with a key that only the server knows.
+suggestButton.addEventListener("click", async () => {
+  const item = form.item.value.trim();
+  if (!item) {
+    showMessage(suggestMessage, "Type what you bought first.", true);
+    form.item.focus();
+    return;
+  }
+
+  suggestButton.disabled = true;
+  showMessage(suggestMessage, "Thinking…");
+  const { data, error } = await supabase.functions.invoke("suggest-category", {
+    body: { item, note: form.note.value.trim() },
+  });
+  suggestButton.disabled = false;
+
+  if (error) {
+    let text = "Couldn't get a suggestion. Try again.";
+    try { text = (await error.context.json()).error || text; } catch {}
+    showMessage(suggestMessage, text, true);
+    return;
+  }
+
+  form.category.value = data.category;
+  showMessage(suggestMessage, `Suggested: ${data.category}. You can still change it.`);
 });
 
 filter.addEventListener("change", renderList);

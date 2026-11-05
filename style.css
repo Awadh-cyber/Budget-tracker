@@ -64,6 +64,11 @@ header h1 { margin: 0; font-size: 28px; }
 }
 .tab[aria-selected="true"] { color: var(--text); background: var(--surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.15); }
 
+.label-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.label-row button { font-size: 13px; }
+#suggest-message:empty { display: none; }
+#suggest-message.error { color: var(--error); }
+
 .password-field { position: relative; display: flex; }
 .password-field input { flex: 1; padding-right: 64px; }
 .password-field button {
@@ -120,7 +125,7 @@ form {
   gap: 12px;
 }
 
-label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+label, .field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
 label.wide { grid-column: 1 / -1; }
 
 input, select {

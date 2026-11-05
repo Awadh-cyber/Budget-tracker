@@ -85,9 +85,12 @@
           Amount (KD)
           <input name="amount" type="number" step="0.001" min="0.001" required placeholder="3.500">
         </label>
-        <label>
-          Category
-          <select name="category" required>
+        <div class="field">
+          <span class="label-row">
+            <label for="category">Category</label>
+            <button type="button" class="link" id="suggest-button">✨ Suggest</button>
+          </span>
+          <select name="category" id="category" required>
             <option>Food</option>
             <option>Transport</option>
             <option>Bills</option>
@@ -95,7 +98,8 @@
             <option>Fun</option>
             <option>Other</option>
           </select>
-        </label>
+          <span class="hint" id="suggest-message" role="status"></span>
+        </div>
         <label>
           Date
           <input name="spent_on" type="date" required>
