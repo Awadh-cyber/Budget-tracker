@@ -64,6 +64,16 @@ header h1 { margin: 0; font-size: 28px; }
 }
 .tab[aria-selected="true"] { color: var(--text); background: var(--surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.15); }
 
+.password-field { position: relative; display: flex; }
+.password-field input { flex: 1; padding-right: 64px; }
+.password-field button {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+}
+
 .switch { margin: 12px 0 0; font-size: 14px; color: var(--muted); text-align: center; }
 
 button.secondary {

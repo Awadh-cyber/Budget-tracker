@@ -45,7 +45,10 @@
         </label>
         <label class="wide">
           <span id="password-label">Password</span>
-          <input name="password" type="password" autocomplete="current-password" minlength="6" required>
+          <span class="password-field">
+            <input name="password" type="password" autocomplete="current-password" minlength="6" required>
+            <button type="button" class="link" id="toggle-password" aria-pressed="false" aria-label="Show password">Show</button>
+          </span>
         </label>
         <button type="submit" id="auth-submit">Log in</button>
       </form>

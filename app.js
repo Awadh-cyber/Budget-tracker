@@ -26,6 +26,7 @@ const authForm = document.getElementById("auth-form");
 const authSubmit = document.getElementById("auth-submit");
 const authMessage = document.getElementById("auth-message");
 const passwordLabel = document.getElementById("password-label");
+const togglePassword = document.getElementById("toggle-password");
 const loginTab = document.getElementById("login-tab");
 const signupTab = document.getElementById("signup-tab");
 const authSwitch = document.getElementById("auth-switch");
@@ -169,6 +170,19 @@ resendButton.addEventListener("click", async () => {
   showMessage(authMessage, error ? friendlyAuthError(error) : `Sent a new confirmation link to ${email}.`, Boolean(error));
 });
 
+function setPasswordVisible(visible) {
+  authForm.password.type = visible ? "text" : "password";
+  togglePassword.textContent = visible ? "Hide" : "Show";
+  togglePassword.setAttribute("aria-pressed", String(visible));
+  togglePassword.setAttribute("aria-label", visible ? "Hide password" : "Show password");
+}
+
+togglePassword.addEventListener("click", (event) => {
+  event.preventDefault();
+  setPasswordVisible(authForm.password.type === "password");
+  authForm.password.focus();
+});
+
 loginTab.addEventListener("click", () => setAuthMode("login"));
 signupTab.addEventListener("click", () => setAuthMode("signup"));
 authSwitchButton.addEventListener("click", () => setAuthMode(authMode === "login" ? "signup" : "login"));
@@ -182,6 +196,7 @@ logoutButton.addEventListener("click", async () => {
 function showSignedIn(user) {
   const changedUser = currentUser?.id !== user.id;
   currentUser = user;
+  setPasswordVisible(false);
   accountEmail.textContent = user.user_metadata?.full_name || user.email;
   accountEmail.title = user.email;
   appLoading.hidden = true;
