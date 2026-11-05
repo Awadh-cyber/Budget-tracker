@@ -22,7 +22,10 @@ One row = one thing I spent money on.
 
 **The details I'll filter by:** `category`, `spent_on` and `amount`.
 
-**Security:** Row Level Security is switched on. For now that means only I can see the data, through the Supabase dashboard and Claude. Nobody can read it from a website yet.
+| `receipt_path` | text | no | Where the receipt photo is saved in the `receipts` bucket, like `<user id>/<random>.png`. |
+| `user_id` | user id (fills itself in) | for new rows | Which account owns this expense. Older rows have no owner yet. |
+
+**Security:** Row Level Security is switched on. Each logged-in user can only see, add, change and delete **their own** expenses. Visitors who aren't logged in can't see anything. See "Accounts and access" below.
 
 ## My rows
 
@@ -63,3 +66,34 @@ In simple words: sort every row from the most expensive to the cheapest, then ke
 - **CREATE TABLE** made the `expenses` table and its columns.
 - **INSERT** added my 3 rows.
 - **SELECT** read the rows back to answer my questions. It doesn't change anything.
+
+## Accounts and access
+
+People log in with an **email and password**. This uses **Supabase Auth**, not a password table I made myself.
+
+### How it matches the board
+
+| On the board | In this project |
+|---|---|
+| **FE** (frontend) sends username + password | The website (`app.js`) sends the **email** + password to Supabase Auth. |
+| **BE** (backend) checks the account and password | Supabase Auth checks them. Passwords are stored scrambled (hashed) in Supabase's own `auth.users` table, never in `expenses`. |
+| BE issues a **JWT** after a successful login | Supabase gives the website a JWT (an "access token", like a signed ID card) and a refresh token. |
+| No account? Offer **registration** | The **Create account** tab. Supabase emails a confirmation link first; after clicking it, you can log in. |
+| **DB** (database) | Postgres in Supabase. Every request from the website carries the JWT, and the database reads the user id from it. |
+
+### Who can see what (Row Level Security)
+
+- **Expenses:** a row is visible only when its `user_id` matches the logged-in user's id.
+- **Receipts:** the `receipts` bucket is private. Each user uploads into their own folder (`receipts/<user id>/…`) and can only open files in that folder. Photos are shown with signed links that stop working after 10 minutes.
+- **Not logged in:** nothing at all.
+- **Rows with no owner** (the first rows I added before accounts existed) are kept safe in the database, but nobody can see them on the website until I decide who owns them.
+
+The exact rules are in [`supabase/access-rules.sql`](supabase/access-rules.sql).
+
+### Staying logged in
+
+The Supabase SDK saves the session in the browser and refreshes the JWT automatically before it expires, so reloading the page keeps you logged in. **Log out** clears it.
+
+### Keys
+
+The website only uses the **publishable** key, which is safe to be public because the rules above decide what it can do. The secret (service role) key is never in this code or in Git.

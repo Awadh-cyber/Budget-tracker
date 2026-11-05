@@ -1,11 +1,36 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
 
 // The publishable key is safe to put in a website. What it can do is
-// controlled by the Row Level Security rules on the expenses table.
+// controlled by the Row Level Security rules: each logged-in user can only
+// reach their own expenses and their own receipts folder.
 const SUPABASE_URL = "https://eqyiciekemnazoikuwyf.supabase.co";
 const SUPABASE_KEY = "sb_publishable_xQ0bTHefdQO6XipEOfWslw_3RZZnWyR";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// The session (JWT + refresh token) is kept in this browser and refreshed
+// automatically before it expires, so a page reload keeps you logged in.
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+});
+
+// Receipt links stop working after 10 minutes; reloading the list makes new ones.
+const RECEIPT_LINK_SECONDS = 600;
+
+const appLoading = document.getElementById("app-loading");
+const authView = document.getElementById("auth-view");
+const appView = document.getElementById("app-view");
+const account = document.getElementById("account");
+const accountEmail = document.getElementById("account-email");
+const logoutButton = document.getElementById("logout-button");
+
+const authForm = document.getElementById("auth-form");
+const authSubmit = document.getElementById("auth-submit");
+const authMessage = document.getElementById("auth-message");
+const loginTab = document.getElementById("login-tab");
+const signupTab = document.getElementById("signup-tab");
+const authSwitch = document.getElementById("auth-switch");
+const authSwitchButton = document.getElementById("auth-switch-button");
+const resend = document.getElementById("resend");
+const resendButton = document.getElementById("resend-button");
 
 const form = document.getElementById("expense-form");
 const formMessage = document.getElementById("form-message");
@@ -14,13 +39,162 @@ const listMessage = document.getElementById("list-message");
 const filter = document.getElementById("category-filter");
 
 let expenses = [];
+let currentUser = null;
+let authMode = "login";
 
 const kd = (n) => `${Number(n).toFixed(3)} KD`;
 const todayISO = () => new Date().toLocaleDateString("en-CA");
 
 form.spent_on.value = todayISO();
 
+// ---------- Auth ----------
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const isLogin = mode === "login";
+  loginTab.setAttribute("aria-selected", String(isLogin));
+  signupTab.setAttribute("aria-selected", String(!isLogin));
+  authSubmit.textContent = isLogin ? "Log in" : "Create account";
+  authForm.password.autocomplete = isLogin ? "current-password" : "new-password";
+  authSwitch.firstChild.textContent = isLogin ? "No account yet? " : "Already have an account? ";
+  authSwitchButton.textContent = isLogin ? "Create one" : "Log in";
+  resend.hidden = true;
+  showMessage(authMessage, "");
+}
+
+function friendlyAuthError(error) {
+  const text = error.message || "";
+  if (/invalid login credentials/i.test(text)) return "Wrong email or password.";
+  if (/email not confirmed/i.test(text)) return "Please confirm your email first. Check your inbox for the link.";
+  if (/already registered|already exists/i.test(text)) return "There's already an account with this email. Try logging in.";
+  if (/rate limit|too many/i.test(text)) return "Too many tries. Please wait a few minutes and try again.";
+  if (/password/i.test(text)) return text;
+  return `Something went wrong: ${text}`;
+}
+
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const email = authForm.email.value.trim();
+  const password = authForm.password.value;
+
+  authSubmit.disabled = true;
+  resend.hidden = true;
+  showMessage(authMessage, authMode === "login" ? "Logging in…" : "Creating your account…");
+
+  if (authMode === "login") {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    authSubmit.disabled = false;
+    if (error) {
+      showMessage(authMessage, friendlyAuthError(error), true);
+      resend.hidden = !/email not confirmed/i.test(error.message);
+      return;
+    }
+    // onAuthStateChange shows the app.
+    authForm.reset();
+    return;
+  }
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: window.location.origin + window.location.pathname },
+  });
+  authSubmit.disabled = false;
+
+  if (error) {
+    showMessage(authMessage, friendlyAuthError(error), true);
+    return;
+  }
+
+  // With email confirmation on, Supabase returns no session until the link is clicked.
+  // An empty identities list means the email is already registered.
+  if (data.user && data.user.identities && data.user.identities.length === 0) {
+    showMessage(authMessage, "There's already an account with this email. Try logging in.", true);
+    return;
+  }
+  if (!data.session) {
+    showMessage(authMessage, `Almost done! We sent a confirmation link to ${email}. Open it, then log in here.`);
+    resend.hidden = false;
+    setAuthModeKeepMessage();
+    return;
+  }
+  authForm.reset();
+});
+
+// Switch to the login tab without clearing the "check your email" message.
+function setAuthModeKeepMessage() {
+  const text = authMessage.textContent;
+  const isError = authMessage.classList.contains("error");
+  const resendHidden = resend.hidden;
+  setAuthMode("login");
+  showMessage(authMessage, text, isError);
+  resend.hidden = resendHidden;
+}
+
+resendButton.addEventListener("click", async () => {
+  const email = authForm.email.value.trim();
+  if (!email) {
+    showMessage(authMessage, "Type your email above first.", true);
+    return;
+  }
+  resendButton.disabled = true;
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: window.location.origin + window.location.pathname },
+  });
+  resendButton.disabled = false;
+  showMessage(authMessage, error ? friendlyAuthError(error) : `Sent a new confirmation link to ${email}.`, Boolean(error));
+});
+
+loginTab.addEventListener("click", () => setAuthMode("login"));
+signupTab.addEventListener("click", () => setAuthMode("signup"));
+authSwitchButton.addEventListener("click", () => setAuthMode(authMode === "login" ? "signup" : "login"));
+
+logoutButton.addEventListener("click", async () => {
+  logoutButton.disabled = true;
+  await supabase.auth.signOut();
+  logoutButton.disabled = false;
+});
+
+function showSignedIn(user) {
+  const changedUser = currentUser?.id !== user.id;
+  currentUser = user;
+  accountEmail.textContent = user.email;
+  appLoading.hidden = true;
+  authView.hidden = true;
+  account.hidden = false;
+  appView.hidden = false;
+  if (changedUser) loadExpenses();
+}
+
+function showSignedOut() {
+  currentUser = null;
+  expenses = [];
+  list.replaceChildren();
+  renderSummary();
+  form.reset();
+  form.spent_on.value = todayISO();
+  showMessage(formMessage, "");
+  appLoading.hidden = true;
+  appView.hidden = true;
+  account.hidden = true;
+  authView.hidden = false;
+}
+
+// Fires on page load (INITIAL_SESSION), login, logout and token refresh.
+// Supabase calls are deferred so they don't run inside the auth callback.
+supabase.auth.onAuthStateChange((event, session) => {
+  setTimeout(() => {
+    if (session?.user) showSignedIn(session.user);
+    else showSignedOut();
+  }, 0);
+});
+
+// ---------- Expenses ----------
+
 async function loadExpenses() {
+  showMessage(listMessage, "Loading…");
   const { data, error } = await supabase
     .from("expenses")
     .select("*")
@@ -34,22 +208,18 @@ async function loadExpenses() {
 
   expenses = data;
   await loadReceiptUrls();
-  if (expenses.length === 0) {
-    showMessage(listMessage, "No expenses yet. If you know there are rows in Supabase, the table may not allow the website to read it yet.", true);
-  } else {
-    showMessage(listMessage, "");
-  }
+  showMessage(listMessage, expenses.length === 0 ? "No expenses yet. Add your first one above." : "");
   renderFilter();
   renderList();
   renderSummary();
 }
 
-// The receipts bucket is private, so each photo gets a link that works for one hour.
+// The receipts bucket is private, so each photo gets a short-lived link.
 async function loadReceiptUrls() {
   const paths = expenses.map((e) => e.receipt_path).filter(Boolean);
   if (paths.length === 0) return;
 
-  const { data, error } = await supabase.storage.from("receipts").createSignedUrls(paths, 3600);
+  const { data, error } = await supabase.storage.from("receipts").createSignedUrls(paths, RECEIPT_LINK_SECONDS);
   if (error) return;
 
   const urls = new Map(data.filter((d) => d.signedUrl).map((d) => [d.path, d.signedUrl]));
@@ -128,12 +298,14 @@ function showMessage(el, text, isError = false) {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!currentUser) return;
   const button = form.querySelector("button");
   button.disabled = true;
   showMessage(formMessage, "Saving…");
 
   const values = Object.fromEntries(new FormData(form));
   const row = {
+    user_id: currentUser.id,
     item: values.item.trim(),
     amount: Number(values.amount),
     category: values.category,
@@ -144,10 +316,11 @@ form.addEventListener("submit", async (event) => {
     receipt_path: null,
   };
 
+  // Receipts go in a folder named after the user, e.g. receipts/<user id>/<random>.png
   const file = values.receipt;
   if (file && file.size > 0) {
     const ext = file.name.split(".").pop().toLowerCase();
-    const path = `${crypto.randomUUID()}.${ext}`;
+    const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("receipts").upload(path, file, { contentType: file.type });
     if (uploadError) {
       button.disabled = false;
@@ -161,6 +334,8 @@ form.addEventListener("submit", async (event) => {
   button.disabled = false;
 
   if (error) {
+    // Don't leave a photo behind that no expense points to.
+    if (row.receipt_path) await supabase.storage.from("receipts").remove([row.receipt_path]);
     showMessage(formMessage, `Couldn't save: ${error.message}`, true);
     return;
   }
@@ -172,5 +347,3 @@ form.addEventListener("submit", async (event) => {
 });
 
 filter.addEventListener("change", renderList);
-
-loadExpenses();

@@ -9,10 +9,40 @@
 <body>
   <main>
     <header>
-      <h1>Budget Tracker</h1>
-      <p class="subtitle">Where my money goes</p>
+      <div>
+        <h1>Budget Tracker</h1>
+        <p class="subtitle">Where my money goes</p>
+      </div>
+      <div class="account" id="account" hidden>
+        <span class="account-email" id="account-email"></span>
+        <button type="button" class="secondary" id="logout-button">Log out</button>
+      </div>
     </header>
 
+    <p class="message" id="app-loading" role="status">Loading…</p>
+
+    <section class="panel auth" id="auth-view" hidden>
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" class="tab" id="login-tab" aria-selected="true">Log in</button>
+        <button type="button" role="tab" class="tab" id="signup-tab" aria-selected="false">Create account</button>
+      </div>
+      <form id="auth-form">
+        <label class="wide">
+          Email
+          <input name="email" type="email" autocomplete="email" required placeholder="you@example.com">
+        </label>
+        <label class="wide">
+          Password
+          <input name="password" type="password" autocomplete="current-password" minlength="6" required>
+        </label>
+        <button type="submit" id="auth-submit">Log in</button>
+      </form>
+      <p class="message" id="auth-message" role="status"></p>
+      <p class="switch" id="auth-switch">No account yet? <button type="button" class="link" id="auth-switch-button">Create one</button></p>
+      <p class="switch" id="resend" hidden><button type="button" class="link" id="resend-button">Send the confirmation email again</button></p>
+    </section>
+
+    <div id="app-view" hidden>
     <section class="summary" aria-label="Summary">
       <div class="card">
         <span class="label">Spent today</span>
@@ -95,6 +125,7 @@
       <p class="message" id="list-message" role="status">Loading…</p>
       <ul id="expense-list"></ul>
     </section>
+    </div>
   </main>
 
   <script type="module" src="app.js"></script>
