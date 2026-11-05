@@ -72,13 +72,32 @@ function setAuthMode(mode) {
   showMessage(authMessage, "");
 }
 
+// Supabase sends an error code with each failure; turn it into plain words.
 function friendlyAuthError(error) {
   const text = error.message || "";
+  switch (error.code) {
+    case "invalid_credentials":
+      return "Wrong email or password. If you just signed up, make sure the account was created and confirmed first.";
+    case "email_not_confirmed":
+      return "Please confirm your email first. Check your inbox (and spam) for the link.";
+    case "user_already_exists":
+    case "email_exists":
+      return "There's already an account with this email. Try logging in.";
+    case "over_email_send_rate_limit":
+      return "Your account was NOT created: Supabase can only send a few confirmation emails per hour and the limit is used up. Try again in about an hour.";
+    case "email_address_not_authorized":
+      return "Supabase's free email service can't send to this address. Use the email of your Supabase account, or ask the project owner to set up email sending.";
+    case "email_address_invalid":
+      return "That email address isn't accepted. Please use a real email address.";
+    case "over_request_rate_limit":
+      return "Too many tries from this device. Please wait a few minutes and try again.";
+    case "weak_password":
+      return "That password is too weak. Use at least 6 characters.";
+  }
   if (/invalid login credentials/i.test(text)) return "Wrong email or password.";
-  if (/email not confirmed/i.test(text)) return "Please confirm your email first. Check your inbox for the link.";
+  if (/email not confirmed/i.test(text)) return "Please confirm your email first. Check your inbox (and spam) for the link.";
   if (/already registered|already exists/i.test(text)) return "There's already an account with this email. Try logging in.";
   if (/rate limit|too many/i.test(text)) return "Too many tries. Please wait a few minutes and try again.";
-  if (/password/i.test(text)) return text;
   return `Something went wrong: ${text}`;
 }
 
@@ -96,7 +115,7 @@ authForm.addEventListener("submit", async (event) => {
     authSubmit.disabled = false;
     if (error) {
       showMessage(authMessage, friendlyAuthError(error), true);
-      resend.hidden = !/email not confirmed/i.test(error.message);
+      resend.hidden = error.code !== "email_not_confirmed" && !/email not confirmed/i.test(error.message);
       return;
     }
     // onAuthStateChange shows the app.
