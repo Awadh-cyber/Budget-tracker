@@ -25,6 +25,7 @@ const logoutButton = document.getElementById("logout-button");
 const authForm = document.getElementById("auth-form");
 const authSubmit = document.getElementById("auth-submit");
 const authMessage = document.getElementById("auth-message");
+const passwordLabel = document.getElementById("password-label");
 const loginTab = document.getElementById("login-tab");
 const signupTab = document.getElementById("signup-tab");
 const authSwitch = document.getElementById("auth-switch");
@@ -56,6 +57,14 @@ function setAuthMode(mode) {
   signupTab.setAttribute("aria-selected", String(!isLogin));
   authSubmit.textContent = isLogin ? "Log in" : "Create account";
   authForm.password.autocomplete = isLogin ? "current-password" : "new-password";
+  passwordLabel.textContent = isLogin ? "Password" : "Create password";
+  // Name fields only show (and only count) when creating an account.
+  for (const field of authForm.querySelectorAll("[data-signup-only]")) {
+    field.hidden = isLogin;
+    field.querySelector("input").disabled = isLogin;
+  }
+  authForm.first_name.required = !isLogin;
+  authForm.last_name.required = !isLogin;
   authSwitch.firstChild.textContent = isLogin ? "No account yet? " : "Already have an account? ";
   authSwitchButton.textContent = isLogin ? "Create one" : "Log in";
   resend.hidden = true;
@@ -94,10 +103,23 @@ authForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  // Names are saved on the account itself (Supabase "user metadata").
+  const firstName = authForm.first_name.value.trim();
+  const secondName = authForm.second_name.value.trim();
+  const lastName = authForm.last_name.value.trim();
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: window.location.origin + window.location.pathname },
+    options: {
+      emailRedirectTo: window.location.origin + window.location.pathname,
+      data: {
+        first_name: firstName,
+        second_name: secondName || null,
+        last_name: lastName,
+        full_name: [firstName, secondName, lastName].filter(Boolean).join(" "),
+      },
+    },
   });
   authSubmit.disabled = false;
 
@@ -160,7 +182,8 @@ logoutButton.addEventListener("click", async () => {
 function showSignedIn(user) {
   const changedUser = currentUser?.id !== user.id;
   currentUser = user;
-  accountEmail.textContent = user.email;
+  accountEmail.textContent = user.user_metadata?.full_name || user.email;
+  accountEmail.title = user.email;
   appLoading.hidden = true;
   authView.hidden = true;
   account.hidden = false;

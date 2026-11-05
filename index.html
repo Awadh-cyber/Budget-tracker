@@ -27,12 +27,24 @@
         <button type="button" role="tab" class="tab" id="signup-tab" aria-selected="false">Create account</button>
       </div>
       <form id="auth-form">
+        <label class="wide" data-signup-only hidden>
+          First name
+          <input name="first_name" autocomplete="given-name" disabled>
+        </label>
+        <label class="wide" data-signup-only hidden>
+          Second name (optional)
+          <input name="second_name" autocomplete="additional-name" disabled>
+        </label>
+        <label class="wide" data-signup-only hidden>
+          Last name
+          <input name="last_name" autocomplete="family-name" disabled>
+        </label>
         <label class="wide">
           Email
           <input name="email" type="email" autocomplete="email" required placeholder="you@example.com">
         </label>
         <label class="wide">
-          Password
+          <span id="password-label">Password</span>
           <input name="password" type="password" autocomplete="current-password" minlength="6" required>
         </label>
         <button type="submit" id="auth-submit">Log in</button>
